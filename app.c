@@ -40,8 +40,11 @@ static const motor_port_t
     right_motor     = EV3_PORT_B,
     tail_motor      = EV3_PORT_A;
 
+#if 0
 static int      bt_cmd = 0;     /* Bluetoothコマンド 1:リモートスタート */
+#endif
 static FILE     *bt = NULL;     /* Bluetoothファイルハンドル */
+static int      color_ref_res = 0;
 
 /* 下記のマクロは個体/環境に合わせて変更する必要があります */
 /* sample_c1マクロ */
@@ -106,11 +109,12 @@ void main_task(intptr_t unused)
     {
         tail_control(TAIL_ANGLE_STAND_UP); /* 完全停止用角度に制御 */
 
+#if 0
         if (bt_cmd == 1)
         {
             break; /* リモートスタート */
         }
-
+#endif
         if (ev3_touch_sensor_is_pressed(touch_sensor) == 1)
         {
             break; /* タッチセンサが押された */
@@ -147,6 +151,7 @@ void main_task(intptr_t unused)
         }
         else
         {
+#if 0
             forward = 30; /* 前進命令 */
             if (ev3_color_sensor_get_reflect(color_sensor) >= (LIGHT_WHITE + LIGHT_BLACK)/2)
             {
@@ -155,6 +160,21 @@ void main_task(intptr_t unused)
             else
             {
                 turn = -20; /* 左旋回命令 */
+            }
+#endif
+            if ( color_ref_res <= 5 ) {
+                /* 前進のみ */
+                forward = 50;
+                turn = 0;
+            }
+            else {
+                forward = 20;
+                if ( ( ( color_ref_res / 5 ) % 2 ) == 0 ) {
+                    turn =  20;     /* 右回りに線を探す */
+                }
+                else {
+                    turn =  -20;    /* 左回りに線を探す */
+                }
             }
         }
 
@@ -281,6 +301,7 @@ static void tail_control(signed int angle)
 //*****************************************************************************
 void bt_task(intptr_t unused)
 {
+#if 0
     while(1)
     {
         uint8_t c = fgetc(bt); /* 受信 */
@@ -294,5 +315,19 @@ void bt_task(intptr_t unused)
         }
         fputc(c, bt); /* エコーバック */
     }
+#endif
+    uint8_t color_ref = 0;
+    
+    color_ref = ev3_color_sensor_get_reflect(color_sensor);
+    
+    if ( ( ( ( LIGHT_WHITE + LIGHT_BLACK ) / 3 ) < color_ref )
+    && ( color_ref < ( ( ( LIGHT_WHITE + LIGHT_BLACK ) / 3) * 2 ) ) ) {
+        color_ref_res = 0;
+    }
+    else {
+        color_ref_res = color_ref_res < 255 ? color_ref_res + 1: 255;
+    }
+    
+    tslp_tsk(1);
 }
 
