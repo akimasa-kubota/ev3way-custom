@@ -295,3 +295,4 @@ void bt_task(intptr_t unused)
         fputc(c, bt); /* エコーバック */
     }
 }
+
